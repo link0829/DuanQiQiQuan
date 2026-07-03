@@ -1,0 +1,284 @@
+{
+  "version": 2,
+  "lastUpdated": "2026-07-02T19:53:00Z",
+  "totalTrades": 0,
+  "winRate": 0,
+  "avgRR": 0,
+  "experiences": [
+    {
+      "date": "2026-06-30",
+      "ticker": "TSLA",
+      "setup": "HSS + Fib OTE + 流动性扫荡",
+      "direction": "LONG",
+      "entry": 417.34,
+      "target": 419.50,
+      "rr": 2.97,
+      "status": "NOT_TAKEN",
+      "lesson": "OTE级别进场位到了就要果断，不能等完美K线收盘确认",
+      "tags": ["OTE", "流动性扫荡", "PinBar"]
+    },
+    {
+      "date": "2026-07-02",
+      "ticker": "TSLA",
+      "setup": "单边下跌趋势日",
+      "direction": "SHORT",
+      "entry_zone": "$425开盘 / $410 bear flag",
+      "target": "$390 (Fib 1.0)",
+      "potential_rr": "PUT 50x+",
+      "status": "MISSED",
+      "lessons": [
+        "开盘就要扫七巨头，11:54才分析已经晚了",
+        "趋势日确定了就干，不等",
+        "TSLA今天是最明显的单边，但被其他票分散了注意力",
+        "正确识别趋势但没有执行 = 等于零"
+      ],
+      "tags": ["趋势日", "TSLA", "missed"]
+    }
+  ],
+  "rules": {
+    "core": [
+      "RANGE震荡 → 强制观望，不交易",
+      "BULLISH多头 → 只做多，屏蔽空信号",
+      "BEARISH空头 → 只做空，屏蔽多信号",
+      "RR < 1.5 → 强制放弃",
+      "随势不逆势 — 大盘和个股方向一致时，不反向交易"
+    ],
+    "0dte": [
+      "⭐ 不在震荡/不明确方向时出手（Theta吃不起）",
+      "⭐ 不等确认，在趋势前出手，买入后直接盈利",
+      "⭐ 没有开始盈利之前尽量不要扛单",
+      "⭐ 已经盈利很多的时候才可以吃波动博更高收益"
+    ],
+    "daily_routine": [
+      "⭐ 每日9:25扫七巨头开盘方向",
+      "⭐ 选出最强(做多) / 最弱(做空)各1-2只",
+      "⭐ 9:40前出计划，直接问干不干",
+      "⭐ 开盘30分钟判断趋势日/震荡日",
+      "趋势日 → 快速出方向，直接跟，不等确认",
+      "震荡日 → 慢慢分析，等共振信号"
+    ],
+    "trend_detection": {
+      "trend_day": "首15分波幅>ATR*0.5 + 连续同向5分K + 放量1.5x + SPY同步 + 30分钟不回开盘价",
+      "range_day": "影线交替 + 量正常 + 来回扫 + 回开盘价 + SPY不一致"
+    },
+    "lessons": [
+      "Fib 0.618 + 流动性扫荡 + 长下影 = 高胜率反转组合",
+      "多头趋势下回踩OTE盈亏比最佳",
+      "OTE位到了可以直接挂单，不等完整K线收盘",
+      "急跌后的横盘不是反转是确认方向（bear flag）",
+      "分析不执行 = 零",
+      "不是我分析你操作，是我分析完催你操作"
+    ],
+    "evolving": true
+  }
+}
+,{
+  "name": "波段的神",
+  "version": "1.0",
+  "loaded": "2026-07-03",
+  "source": "皓哥",
+  "core_concepts": [
+    "黄色结构支撑带: 大涨前3-5根K线横盘区，上轨=实体Close最大值，下轨=Low最小值",
+    "头顶压力区: 前波段Swing High的High~Open/Close构成的矩形阻力带",
+    "信号K线: 脚踩支撑+头顶压力+波幅>前5根均值*2"
+  ],
+  "state_machine": {
+    "S1_耐受期": "多单入场后回踩，只要Price>Zone_Low就不动",
+    "S2_信号确立": "15分钟爆量K线出现，锁定Signal_Low和Signal_High",
+    "S3_风控升级": "止损推至Signal_Low-1tick，预埋反向突破单",
+    "S4_多翻空": "跌破Signal_Low触发反手空单"
+  },
+  "anti_retail": [
+    "回踩洗盘时不挂保本损 → 给仓位呼吸空间",
+    "主升浪时不急于止盈 → 用信号K线锚定",
+    "防线被破时不扛单 → 立刻反手做空"
+  ]
+}
+,{
+  "architecture_upgrade": "v3",
+  "date": "2026-07-03",
+  "blocks": {
+    "chart_analysis": {
+      "position": "介于步骤1(9:25扫描)和步骤2(9:30-10:00趋势检测)之间",
+      "functions": [
+        "画黄色结构支撑带(3-5根K线横盘区: 上轨=Close.max, 下轨=Low.min)",
+        "画头顶压力区(前波段Swing High: 上轨=High, 下轨=Open/Close)",
+        "确认核心信号K线(脚踩支撑+头顶压力+波幅>前5均*2)"
+      ]
+    },
+    "trading_strategy": {
+      "position": "升级步骤4(出计划)和步骤5(跟单)",
+      "rules": [
+        "严禁盲目保本损: 不破黄色下轨就不动",
+        "信号K线确立后: ZS锚定Signal_Low/Signal_High",
+        "推损+反向预埋: 盈利震荡时推至Signal_Low-1tick，同价预埋反向单",
+        "多翻空: 触发止损时自动激活反向单"
+      ]
+    }
+  },
+  "execution_flow": [
+    "9:25 扫描 + 画结构带/压力区",
+    "9:30-10:00 检测趋势 + 等待核心信号K线",
+    "选方向: 用信号K线的脚踩支撑/头顶压力判定",
+    "出计划: 改用信号K线边界止损, 加0DTE不扛单检查",
+    "跟单: 启动推损+反向预埋协议"
+  ]
+}
+,{
+  "upgrade": "0DTE极速超短线",
+  "date": "2026-07-03",
+  "micro_chart": {
+    "yellow_zone": "1/3/5分K上3-8根小波幅K线构成的窄幅箱体，上轨=Close.max，下轨=Low.min",
+    "signal_candle": "波幅>前5根均值*2的放量单边K线，记录Signal_High/Low"
+  },
+  "0dte_execution": {
+    "entry": "突破Zone_High才做CALL，跌破Zone_Low才做PUT，不在箱体内出手",
+    "trailing": "盈利后推损至前一根1/3分K的最高点(空)/最低点(多)稍外侧",
+    "reverse": "假突破被止损时，同价位立即激活反向0DTE计划"
+  },
+  "five_step_flow": [
+    "9:25 扫七巨头 + 标微观箱体",
+    "9:30-10:00 趋势检测",
+    "选方向: 看哪边破位",
+    "出计划: Zone_High/Low触发点 + 0DTE反手条件",
+    "跟单: 分K推损 + 假破反手"
+  ]
+}
+,{
+  "activation": "ICT-0DTE终极合体",
+  "date": "2026-07-03",
+  "modules": {
+    "OB画结构带": "Active — 3/5分K上，暴涨前最后一根反向阴线=黄色结构带，暴跌前最后一根反向阳线=头顶压力区",
+    "FVG加速验证": "Active — 破位时检测Bearish/Bullish FVG，有缺口=加速阶段，0DTE黄金窗口",
+    "BSL/SSL反手": "Active — 价格刺穿压力区后迅速收回=BSL扫荡，立即反手做PUT",
+    "多周期对齐": "Active — 1分K+3分K信号K线出现+15分K偏见不冲突=全速进场，不等15分收线",
+    "Wyckoff": "Disabled — 0DTE禁用"
+  },
+  "execution_kernel": "OB画线 → 信号K表态 → FVG加速确认 → BSL/SSL防假破反手"
+}
+,{
+  "upgrade": "买点质量风控系统",
+  "date": "2026-07-03",
+  "state_machine": {
+    "A_极优买点": {
+      "entry": "黄色结构带绝对底部或信号K线爆发初始节点",
+      "cushion": "进场即巨幅浮盈",
+      "consolidation": "允许持仓，以成本/微利为底线",
+      "breakdown": "秒抛多单 + 瞬间反手做空 PUT"
+    },
+    "B_普通买点": {
+      "entry": "右侧追单或进场后未脱离成本区",
+      "cushion": "利润垫极薄",
+      "consolidation": "零容忍！横盘>3根K线立即抛掉止盈",
+      "breakdown": "早已空仓，破位瞬间右侧空单杀入"
+    }
+  },
+  "theta_rule": "震荡不扛 — 极优买点用浮盈扛，普通买点直接走"
+}
+,{
+  "upgrade": "FVG几何+CE锚定算法",
+  "date": "2026-07-03",
+  "definitions": {
+    "BearishFVG": "K1_Low > K3_High → 区间[K3_High, K1_Low]",
+    "BullishFVG": "K3_Low > K1_High → 区间[K1_High, K3_Low]",
+    "CE_0.5": "(FVG_Upper + FVG_Lower) / 2"
+  },
+  "trading_rules": {
+    "state_A_entry": "价格回踩FVG内部 + 1分K测试CE收针拒绝 → 顺势进场",
+    "state_B_reversal": "价格实体收盘穿透CE → FVG防守失败 → 准备反手"
+  }
+}
+,{
+  "upgrade": "0DTE闪电交易算法",
+  "date": "2026-07-03",
+  "micro_scan": "1分K，过去20根K线实体极小交织→锁定不触发",
+  "micro_BOS": "1分K实体突破前5根K线极值→从爆发腿拉Fib",
+  "snipe": {
+    "entry": "快闪回踩Fib 0.618 → 市价/限价买入ATM期权",
+    "stop_price": "跌破Fib 1.0",
+    "stop_time": "持仓满8分钟未脱离0.618区→清仓"
+  },
+  "tp": {
+    "0.382": "平50%仓位，锁死本金",
+    "0.0": "100%全平，拒绝贪婪"
+  }
+}
+,{
+  "upgrade": "0DTE瞬时反转触发器",
+  "date": "2026-07-03",
+  "A_space": "价格进入Fib 0.618-0.65黄金伏击圈",
+  "B_triggers": [
+    "放量天针: Vol>2.5x均值 + 下影线>60%",
+    "结构收复: 阴线砸穿0.618 + 下根阳线吞没 + 收盘>VWAP",
+    "微观背离: 价格破前低入圈 + 1分RSI底背离 + 饱和阳线"
+  ],
+  "execution": "A+B任意一条K线收盘同时成立→市价买入ATM 0DTE",
+  "hard_stop": "下根K线跌破反转K线最低点→无条件止损"
+}
+,{
+  "master_decision_tree": {
+    "monitor": "1m/3m优先",
+    "entry_condition": "价格同时进入Fib 0.618区域 + OB结构支撑带",
+    "triggers": {
+      "trigger_A": "ICT_SSL流动性扫荡 + Pin Bar收盘于OB之上 → 做多CALL + 1分K推损",
+      "trigger_B": "裸K吞没 + FVG向上加速 → 做多CALL + 1分K推损"
+    },
+    "stop": "跌破Pin Bar低点/吞没K线低点 → 瞬间止损 + 评估反手做PUT"
+  }
+}
+,{
+  "module": "抓波动-空间雷达",
+  "fib_zone": "0.618-0.786",
+  "resonance": "Fib 0.618-0.786 ∩ OB结构带 ∩ VWAP(早盘点) — 三线误差≤0.05%",
+  "verdict": "空间共振成立，弹簧压至极限 → 最高警戒"
+}
+,{
+  "branch_A_liquidity_hunt": {
+    "conditions": [
+      "ICT流动性扫荡(SSL/BSL)",
+      "裸K_Pin Bar",
+      "下影线 >= K线全长60%",
+      "CVD底背离(价格新低但CVD向上)"
+    ],
+    "action": "市价买入0DTE ATM期权"
+  },
+  "branch_B_momentum_engulf": {
+    "conditions": [
+      "吞没收复前一根砸穿0.618的阴线",
+      "收盘站回0.618 + OB支撑带之上",
+      "生成FVG向上加速缺口",
+      "$TICK指数触及-1000极端恐慌后勾头"
+    ],
+    "action": "市价买入0DTE ATM期权"
+  }
+}
+,{
+  "veto_rule": {
+    "condition": "价格进入0.618但下方有流动性空洞 OR 无机构大额限价买单墙",
+    "action": "强制熔断，系统锁定，拒绝接飞刀"
+  },
+  "black_swan_stop": {
+    "stop_line": "反转K线最低点 或 Bookmap防御墙边缘",
+    "trigger": "1分K实体收盘跌破该线",
+    "action": "0.1秒市价强平，不扛单"
+  }
+}
+,{
+  "exit_strategy": {
+    "first_exit_50pct": {
+      "trigger": "价格从0.618反弹至0.382 或 触及对侧FVG压力",
+      "action": "市价平50%仓位，锁死本金"
+    },
+    "second_exit_50pct": {
+      "trailing": "激活1分K推损，止损=前一根1m K线最低点",
+      "trigger": "价格冲入对侧BSL触发区 + CVD动能走平/买盘枯竭",
+      "action": "100%斩仓离场"
+    }
+  }
+}
+,{
+  "post_stop_reverse": {
+    "condition": "黑天鹅止损被扫 + 砸盘K线实体巨大 + 向下FVG加速",
+    "action": "判定多头被埋踩踏，激活闪电反手，买入反向0DTE PUT"
+  }
+}

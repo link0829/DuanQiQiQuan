@@ -1,0 +1,17 @@
+{
+  "account": {
+    "balance": 1000,
+    "daily_loss_limit": 150,
+    "max_contracts_per_trade": 5,
+    "max_daily_trades": 3,
+    "max_consecutive_losses": 3
+  },
+  "session": {
+    "date": "",
+    "trades_today": 0,
+    "pnl_today": 0,
+    "consecutive_losses": 0
+  },
+  "positions": [],
+  "history": []
+}
