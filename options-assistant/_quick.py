@@ -20,7 +20,29 @@ for idx in ['SPY','QQQ','DIA','IWM']:
     o=float(d['Open'].iloc[0]); h=float(d['High'].max()); l=float(d['Low'].min()); c=float(d['Close'].iloc[-1])
     print(f'  {idx}: ${c:.0f} ({(c/o-1)*100:+.1f}%) 峰谷${h-l:.0f}')
 
-# ② 宏观
+# ② 板块资金流向
+print(f'\n[板块资金]')
+sectors = {'XLK':'科技','XLF':'金融','XLE':'能源','XLV':'医疗','XLI':'工业',
+           'XLP':'消费防御','XLY':'消费可选','XLU':'公用事业','XLB':'材料','XLRE':'房地产'}
+try:
+    flows = []
+    for tk_s, nm in sectors.items():
+        sd = yf.download(tk_s, period='1d', interval='5m', progress=False)
+        if sd.empty: continue
+        sd.columns = [c[0] if isinstance(c,tuple) else c for c in sd.columns]
+        so = float(sd['Open'].iloc[0]); sc = float(sd['Close'].iloc[-1])
+        sch = (sc/so-1)*100
+        flows.append((sch, nm, sc))
+    flows.sort(reverse=True)
+    top3 = flows[:3]; bot3 = flows[-3:]
+    print(f'  🟢流入: {" | ".join([f"{n}+{c:.1f}%" for c,n,p in top3])}')
+    print(f'  🔴流出: {" | ".join([f"{n}{c:+.1f}%" for c,n,p in bot3])}')
+    v = yf.download('^VIX', period='1d', interval='5m', progress=False)
+    if not v.empty: v.columns=[c[0] if isinstance(c,tuple) else c for c in v.columns]; vix=float(v['Close'].iloc[-1])
+    print(f'  VIX: {vix:.1f}{"😱" if vix>25 else "😰" if vix>18 else "😐" if vix>12 else "😊"}')
+except: print('  计算中...')
+
+# ③ 宏观
 macro = macro_bias_analysis(tk)
 if macro: print(f'\n[宏观] {macro.get("trend","?")}')
 
@@ -83,7 +105,86 @@ try:
     if not found: print('  无FVG缺口（动能中性）')
 except: print('  计算中...')
 
-# ⑥ ICT流动性
+# ⑥ 缩量横盘检测 (弹簧检测)
+print(f'\n[⚡ 弹簧检测]')
+try:
+    recent_vol = d.tail(30)
+    high_vol = float(recent_vol['Volume'].head(15).mean())
+    low_vol = float(recent_vol['Volume'].tail(15).mean())
+    vol_shrink = low_vol / high_vol if high_vol > 0 else 1
+    
+    # 箱体检测（最近12根K线高低点范围）
+    box = d.tail(12)
+    box_high = float(box['High'].max())
+    box_low = float(box['Low'].min())
+    box_range = box_high - box_low
+    
+    # 趋势方向（最近20根K线）
+    trend20 = d.tail(20)
+    up_vol = float(trend20[trend20['Close'] > trend20['Open']]['Volume'].sum())
+    down_vol = float(trend20[trend20['Close'] < trend20['Open']]['Volume'].sum())
+    total = up_vol + down_vol if up_vol + down_vol > 0 else 1
+    bias = '🟢偏多' if up_vol/total > 0.55 else ('🔴偏空' if down_vol/total > 0.55 else '➡️中性')
+    
+    if vol_shrink < 0.6 and box_range < float(d['Range'].tail(30).mean()) * 0.8:
+        flag = '⚡弹簧压紧中'
+        if vol_shrink < 0.4: flag += '（极度缩量！）'
+        print(f'  {flag}')
+        print(f'  箱体: ${box_low:.2f}~${box_high:.2f}（{len(box)}根K线）')
+        print(f'  量能: {low_vol:.0f}（活跃期{high_vol:.0f}的{vol_shrink*100:.0f}%）')
+        print(f'  方向: {bias}')
+    elif vol_shrink < 0.8:
+        print(f'  轻度缩量（活跃期{high_vol:.0f}→{low_vol:.0f}, {vol_shrink*100:.0f}%）')
+    else:
+        print(f'  量能正常（{int(low_vol):,}），无弹簧状态')
+except: print('  计算中...')
+
+# ⑦ 筹码峰成交量 (Volume Profile)
+print(f'\n[⛰️ 筹码峰成交量]')
+try:
+    vp = d.tail(78)
+    if len(vp) > 10:
+        pmn = float(vp['Low'].min())
+        pmx = float(vp['High'].max())
+        rng = pmx - pmn
+        step = max(round(rng / 15, 0), 0.5) if rng > 0 else 1
+        
+        # 每个价格档位的成交量
+        pvols = {}
+        for s in [pmn + i*step for i in range(16)]:
+            if s > pmx: break
+            e = s + step
+            v = float(vp[(vp['High']>=s)&(vp['Low']<=e)]['Volume'].sum())
+            if v > 0:
+                pvols[round(s,1)] = {'vol': v, 'end': round(e,1)}
+        
+        if pvols:
+            max_v = max(p['vol'] for p in pvols.values())
+            sorted_v = sorted([p['vol'] for p in pvols.values()], reverse=True)
+            top3_threshold = sorted_v[2] if len(sorted_v) > 2 else max_v * 0.8
+            median_v = sorted_v[len(sorted_v)//2] if sorted_v else max_v
+            
+            print(f'  量峰（█=峰值 ▓=密集 ░=稀疏）:')
+            for lvl, info in sorted(pvols.items()):
+                v = info['vol']
+                bar_len = max(1, int(v / max_v * 20))
+                if v >= top3_threshold:
+                    bar = '█' * bar_len
+                    tag = f' ⛰️ 峰值{v:,.0f}'
+                elif v >= median_v:
+                    bar = '▓' * bar_len
+                    tag = f' {v:,.0f}'
+                else:
+                    bar = '░' * bar_len
+                    tag = ''
+                marker = ' ◀当前' if lvl <= price <= info['end'] else ''
+                print(f'  ${lvl:.0f}-${info["end"]:.0f} {bar:<20}{tag}{marker}')
+            
+            # 峰值信号
+            print(f'  ⛰️ 峰值区: ${sorted(pvols.keys())[:3]} — 机构主战场')
+except: print('  计算中...')
+
+# ⑧ ICT流动性
 liq = PriceAction.detect_liquidity(d)
 print(f'\n[🔴 ICT流动性]')
 if liq.get('bsl_sweep'): print(f'  BSL扫荡(上方) — 警惕假突破反手做空')
