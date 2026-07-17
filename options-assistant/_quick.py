@@ -210,6 +210,97 @@ if pins:
     best = max(pins, key=lambda x: x['score'])
     print(f'\n[PinBar] {best["type"]} {best["score"]}/5 @ ${best["price"]}')
 
+# RSI + MACD
+print(f'\n[动量]')
+try:
+    rsi1 = round(100 * float(d['ClosePositionRatio'].iloc[-1]), 1)
+    rs = '多头动能' if rsi1 >= 60 else ('空头动能' if rsi1 <= 40 else '中性')
+    print(f'  RSI(1)={rsi1:.0f} ({rs})')
+    if 'MACD' in d.columns:
+        mv = float(d['MACD'].iloc[-1]); ms = float(d['MACD_Signal'].iloc[-1])
+        mh = float(d['MACD_Hist'].iloc[-1])
+        md = '多头' if mv > ms else '空头'
+        hd = '放大' if mh > float(d['MACD_Hist'].iloc[-2]) else '缩小' if len(d) > 2 else ''
+        print(f'  MACD: {md} | 柱{hd}')
+    # 3分VWAP突破检测
+    if len(d) >= 3:
+        vwap = float(d['VWAP'].iloc[-1])
+        c1, c2 = float(d['Close'].iloc[-2]), float(d['Close'].iloc[-1])
+        o1, o2 = float(d['Open'].iloc[-2]), float(d['Open'].iloc[-1])
+        if c2 > vwap and c1 < vwap:
+            print(f'  VWAP突破: ⬆️ 冲破VWAP')
+            if c2 > o2 and c2 > c1:
+                print(f'    第二根继续向前 ✅ 进场信号')
+            else:
+                print(f'    第二根力度不足 ⏳')
+        elif c2 < vwap and c1 > vwap:
+            print(f'  VWAP突破: ⬇️ 跌破VWAP')
+            if c2 < o2 and c2 < c1:
+                print(f'    第二根继续向下 ✅ 进场信号')
+            else:
+                print(f'    第二根力度不足 ⏳')
+        else:
+            if abs(c2 - vwap) / vwap < 0.002:
+                print(f'  VWAP: 价格在VWAP附近')
+except: pass
+
+# 自动画图
+import matplotlib
+if True:
+    try:
+        import matplotlib.font_manager
+        try:
+            matplotlib.font_manager.fontManager.addfont('/tmp/NotoSansCJK.ttf')
+            matplotlib.rcParams['font.family'] = 'Noto Sans CJK JP'
+        except: pass
+        import matplotlib.pyplot as plt, subprocess, shutil
+        from hss_fib_scanner import calc_swing, calc_fib
+        fig,ax=plt.subplots(figsize=(20,12)); fig.patch.set_facecolor('#0d1117');ax.set_facecolor('#0d1117')
+        for i in range(len(d)):
+            cc='#3fb950' if d['Close'].iloc[i]>d['Open'].iloc[i] else '#f85149'
+            ax.plot([i,i],[d['Low'].iloc[i],d['High'].iloc[i]],cc,linewidth=0.3)
+            ax.plot([i,i],[d['Open'].iloc[i],d['Close'].iloc[i]],cc,linewidth=2.5)
+        # VWAP
+        typ=(d['High']+d['Low']+d['Close'])/3
+        if 'VWAP' not in d:
+            d['VWAP']=(typ*d['Volume']).cumsum()/d['Volume'].cumsum()
+        ax.plot(range(len(d)),d['VWAP'],'#58a6ff',linewidth=1.5,linestyle='--',alpha=0.7,label='VWAP')
+        # Fib
+        sw=d.tail(24);sd,sp,ep=calc_swing(sw);fib=calc_fib(sd,sp,ep)
+        for lv,nm,cl,ex in[(0.0,'0.0 顶','#8b949e',''),(0.382,'0.382','#8b949e',''),(0.5,'0.5 中','#d29922',''),(0.618,'0.618 OTE','#f0883e','进场'),(0.786,'0.786','#8b949e',''),(1.0,'1.0 底','#8b949e','止损')]:
+            pr=fib[lv];ax.axhline(y=pr,color=cl,linewidth=1,linestyle='--',alpha=0.5)
+            t=f'  {nm} ${pr:.0f}'+(f' ~ {ex}' if ex else '');ax.text(len(d)-2,pr,t,fontsize=10,color=cl,fontweight='bold' if ex else 'normal')
+        # FVG
+        try:
+            for i in range(1,len(d)-1):
+                if float(d['Low'].iloc[i])>float(d['High'].iloc[i-1]):
+                    lo_fvg=float(d['High'].iloc[i-1]);hi_fvg=float(d['Low'].iloc[i])
+                    ax.axhspan(lo_fvg,hi_fvg,alpha=0.12,color='#3fb950')
+                    ax.text(len(d)-30,(lo_fvg+hi_fvg)/2,'FVG 看涨',fontsize=11,color='#3fb950',fontweight='bold',bbox=dict(boxstyle='round',fc='#0d1117',ec='#3fb950'));break
+        except: pass
+        # T1 T2
+        fib_range=fib[0.0]-fib[1.0]
+        tp1=fib[0.0]+fib_range*0.2; tp2=fib[0.0]+fib_range*0.5
+        ax.axhline(y=tp1,color='#58a6ff',linewidth=1.5,linestyle='-.');ax.annotate(f'T1 ${tp1:.0f}',xy=(len(d)-8,tp1+2),fontsize=12,color='#58a6ff',fontweight='bold',bbox=dict(boxstyle='round',fc='#0d1117',ec='#58a6ff'))
+        ax.axhline(y=tp2,color='#58a6ff',linewidth=1.5,linestyle=':');ax.annotate(f'T2 ${tp2:.0f}',xy=(len(d)-12,tp2+2),fontsize=12,color='#58a6ff',fontweight='bold',bbox=dict(boxstyle='round',fc='#0d1117',ec='#58a6ff'))
+        # 当前价
+        ax.axhline(y=p,color='#ffd700',linewidth=2);ax.annotate(f'当前 ${p:.2f}',xy=(len(d)-1,p),fontsize=14,color='#ffd700',fontweight='bold')
+        # 策略面板
+        dir='做多' if p>float(d['VWAP'].iloc[-1]) else '做空'
+        try:
+            rsi_v=round(100*float(d['ClosePositionRatio'].iloc[-1]),1)
+        except: rsi_v=50
+        tx=f'交易计划\n{"="*16}\n方向: {dir}\n进场: Fib 0.618\n止损: Fib 1.0\nT1: Fib 0.0\nT2: 突破延伸\nRR: 2:1\n{"="*16}\nRSI(1)={rsi_v:.0f}'
+        ax.text(0.75,0.35,tx,transform=ax.transAxes,fontsize=12,color='#f0f6fc',fontfamily='monospace',va='top',bbox=dict(boxstyle='round,pad=1',facecolor='#161b22',edgecolor='#30363d',lw=2))
+        ax.set_title(f'{tk}',fontsize=16,color='#f0f6fc',fontweight='bold')
+        ax.tick_params(colors='#8b949e');ax.grid(alpha=0.05);ax.legend(loc='upper left',facecolor='#0d1117',labelcolor='#f0f6fc')
+        plt.tight_layout();plt.savefig('/tmp/ch.png',dpi=150,facecolor='#0d1117')
+        shutil.copy('/tmp/ch.png','/home/codespace/.openclaw/workspace/ch.png')
+        subprocess.run(['git','add','ch.png'],cwd='/home/codespace/.openclaw/workspace',capture_output=True)
+        subprocess.run(['git','commit','-m','ch'],cwd='/home/codespace/.openclaw/workspace',capture_output=True)
+        subprocess.run(['git','push'],cwd='/home/codespace/.openclaw/workspace',capture_output=True)
+    except: pass
+
 from risk_manager import print_check
 print(f'\n[风控]')
 print_check(tk, 'PUT', 2, 1.50, 1000)
