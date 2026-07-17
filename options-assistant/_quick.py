@@ -272,11 +272,18 @@ if True:
             t=f'  {nm} ${pr:.0f}'+(f' ~ {ex}' if ex else '');ax.text(len(d)-2,pr,t,fontsize=10,color=cl,fontweight='bold' if ex else 'normal')
         # FVG
         try:
+            fvg_drawn=False
             for i in range(1,len(d)-1):
                 if float(d['Low'].iloc[i])>float(d['High'].iloc[i-1]):
                     lo_fvg=float(d['High'].iloc[i-1]);hi_fvg=float(d['Low'].iloc[i])
                     ax.axhspan(lo_fvg,hi_fvg,alpha=0.12,color='#3fb950')
-                    ax.text(len(d)-30,(lo_fvg+hi_fvg)/2,'FVG 看涨',fontsize=11,color='#3fb950',fontweight='bold',bbox=dict(boxstyle='round',fc='#0d1117',ec='#3fb950'));break
+                    ax.text(len(d)-30,(lo_fvg+hi_fvg)/2,'FVG 看涨缺口',fontsize=11,color='#3fb950',fontweight='bold',bbox=dict(boxstyle='round',fc='#0d1117',ec='#3fb950'));fvg_drawn=True;break
+                if float(d['Low'].iloc[i-1])>float(d['High'].iloc[i]):
+                    lo_fvg=float(d['High'].iloc[i]);hi_fvg=float(d['Low'].iloc[i-1])
+                    ax.axhspan(lo_fvg,hi_fvg,alpha=0.12,color='#f85149')
+                    ax.text(len(d)-30,(lo_fvg+hi_fvg)/2,'FVG 看跌缺口',fontsize=11,color='#f85149',fontweight='bold',bbox=dict(boxstyle='round',fc='#0d1117',ec='#f85149'));fvg_drawn=True;break
+            if not fvg_drawn:
+                ax.text(0.02,0.92,'FVG: 无缺口',transform=ax.transAxes,fontsize=10,color='#8b949e',fontfamily='monospace')
         except: pass
         # T1 T2
         fib_range=fib[0.0]-fib[1.0]
