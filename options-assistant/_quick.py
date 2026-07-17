@@ -46,9 +46,11 @@ except: print('  计算中...')
 macro = macro_bias_analysis(tk)
 if macro: print(f'\n[宏观] {macro.get("trend","?")}')
 
-# ③ 数据准备
-d = yf.download(tk, period='5d', interval='5m', progress=False)
-d.columns = [c[0] if isinstance(c,tuple) else c for c in d.columns]
+# ③ 数据准备（3分K为主 — 1分K重采样）
+d1m = yf.download(tk, period='3d', interval='1m', progress=False)
+d1m.columns = [c[0] if isinstance(c,tuple) else c for c in d1m.columns]
+# 重采样为3分K
+d = d1m.resample("3min").agg({'Open':'first','High':'max','Low':'min','Close':'last','Volume':'sum'}).dropna()
 d = extract_candle_features(d); d = add_indicators(d); d = calc_hss_ha(d)
 last = d.iloc[-1]; price = float(last['Close'])
 
